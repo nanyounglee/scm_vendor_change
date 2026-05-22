@@ -9,7 +9,7 @@
 브라우저(Chrome 권장)에서 아래 링크로 접속하세요.
 
 ```
-https://YOUR_USERNAME.github.io/scm_vendor_change/
+https://nanyounglee.github.io/scm_vendor_change/
 ```
 
 > 별도 설치 없이 링크만으로 사용 가능합니다. 인터넷 연결이 필요합니다.
