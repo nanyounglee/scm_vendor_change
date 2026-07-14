@@ -220,8 +220,8 @@ Airtable 파츠 데이터는 **매주 월요일 오전 8시(KST)** 에 자동으
 ## ⚠️ 주의사항
 
 1. **Chrome 브라우저** 사용을 권장합니다.
-2. 보고서는 **해당 기기의 브라우저에만 저장**됩니다. 다른 PC에서는 보이지 않습니다.  
-   → 여러 기기에서 작업하는 경우 📤 내보내기 / 📥 가져오기를 활용하세요.
+2. 새로 작성했거나 상태를 변경한 보고서는 **동기화 전까지 해당 기기의 브라우저에만 저장**됩니다.
+   `bank/` 폴더로 동기화된 보고서는 모든 기기에서 동일하게 조회됩니다 (헤더의 **[🗂 보고서 동기화]** 참고, `bank/README.md`).
 3. 브라우저 캐시 삭제 전 반드시 **[📤 내보내기]** 로 백업하세요.
 4. AS-IS 단가·리드타임은 **Airtable 데이터 기준**이며, 실제 현황과 다를 수 있습니다.
 5. 리드타임은 **Phantom 파츠(추상적 산출물) 기준**으로 표시됩니다.
@@ -238,13 +238,17 @@ Airtable 파츠 데이터는 **매주 월요일 오전 8시(KST)** 에 자동으
 ├── scripts/
 │   ├── build_v7.py           ← HTML 빌더 (데이터 갱신 후 실행)
 │   └── data_manager.py       ← Airtable 데이터 관리
-└── data/
-    ├── db_slim.json          ← 파츠·이슈·판매 데이터
-    ├── goods_moq.json        ← 굿즈별 MOQ
-    ├── items_lt_by_parts.json ← 파츠별 리드타임
-    ├── parts_imgang.json     ← 파츠별 임가공 정보
-    ├── reports_archive.json  ← 보고서 아카이브 (HTML 내장용)
-    └── metadata.json         ← 버전·갱신일 정보
+├── data/
+│   ├── db_slim.json          ← 파츠·이슈·판매 데이터
+│   ├── goods_moq.json        ← 굿즈별 MOQ
+│   ├── items_lt_by_parts.json ← 파츠별 리드타임
+│   ├── parts_imgang.json     ← 파츠별 임가공 정보
+│   ├── reports_archive.json  ← 보고서 아카이브 (HTML 내장용)
+│   └── metadata.json         ← 버전·갱신일 정보
+└── bank/                     ← 보고서 공유 스냅샷 (모든 기기에서 동일하게 조회됨)
+    ├── reports.json          ← 전체 보고서 스냅샷 (EMBEDDED_REPORTS 생성 소스)
+    ├── <id>-<굿즈명>.md       ← 보고서별 마크다운 사본
+    └── sync_bank.py          ← 동기화 스크립트 (자세한 내용은 bank/README.md)
 ```
 
 > **파트원은 `scm_dashboard_v7.html` 파일만 열면 됩니다.**  
