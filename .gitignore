@@ -1,0 +1,6 @@
+﻿/data/
+/scripts/
+/backup/
+scm_dashboard_v*.html
+__pycache__/
+*.csv
