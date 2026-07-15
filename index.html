@@ -876,16 +876,16 @@ function exportRpts(){
   toast(`✅ ${rpts.length}개 보고서 내보내기 완료`);
 }
 
-async function importFromBank(){
+async function importFromBank(silent){
   const bankStatus=document.getElementById('bank-status');
-  if(bankStatus) bankStatus.textContent='⏳ bank 폴더 목록을 불러오는 중...';
+  if(bankStatus) bankStatus.textContent=silent?'⏳ bank 폴더 최신 내용을 자동으로 확인하는 중...':'⏳ bank 폴더 목록을 불러오는 중...';
   try{
     const listRes=await fetch(`https://api.github.com/repos/${BANK_REPO}/contents/${BANK_PATH}?ref=${BANK_BRANCH}`);
     if(!listRes.ok) throw new Error(`bank 폴더 조회 실패 (HTTP ${listRes.status})`);
     const files=(await listRes.json()).filter(f=>f.type==='file'&&f.name.toLowerCase().endsWith('.json'));
     if(!files.length){
       if(bankStatus) bankStatus.textContent='ℹ️ bank 폴더에 아직 업로드된 보고서 파일이 없습니다.';
-      toast('bank 폴더에 파일이 없습니다',true);
+      if(!silent) toast('bank 폴더에 파일이 없습니다',true);
       return;
     }
     const existing=getRpts();
@@ -901,14 +901,16 @@ async function importFromBank(){
         data.forEach(r=>{ if(r&&r.id&&!existIds.has(r.id)){merged.push(r);existIds.add(r.id);added++;} });
       }catch(err){ failedFiles.push(f.name); }
     }
-    setRpts(merged);
-    renderQTabs(); renderArc(null);
+    if(added>0){
+      setRpts(merged);
+      renderQTabs(); renderArc(null);
+    }
     const failNote=failedFiles.length?` (실패: ${failedFiles.join(', ')})`:'';
     if(bankStatus) bankStatus.textContent=`✅ bank 파일 ${files.length}개 확인, 신규 보고서 ${added}개 반영 (총 ${merged.length}개)${failNote}`;
-    toast(`✅ Bank에서 ${added}개 신규 보고서 가져오기 완료`);
+    if(!silent||added>0) toast(`✅ Bank에서 ${added}개 신규 보고서 가져오기 완료`);
   }catch(err){
     if(bankStatus) bankStatus.textContent=`❌ Bank 가져오기 실패: ${err.message}`;
-    toast('Bank 가져오기 실패: '+err.message,true);
+    if(!silent) toast('Bank 가져오기 실패: '+err.message,true);
   }
 }
 function importRpts(){
@@ -1244,6 +1246,7 @@ function updateDataBadges(){
 window.addEventListener('DOMContentLoaded',()=>{
   initGoods();
   updateDataBadges();
+  importFromBank(true); // bank 폴더 최신 보고서를 자동(무음)으로 반영
 });
 
 </script>
