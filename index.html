@@ -415,6 +415,22 @@ header{background:#fff;border-bottom:1px solid var(--bdr);padding:0 28px;display
     <div class="monthly-wrap" id="monthly-completed"></div>
   </div>
 
+  <!-- 팀 공유 (Bank) -->
+  <div class="ops-panel">
+    <div class="ops-head">
+      <div>
+        <div class="ops-title">보고서 팀 공유 (Bank)</div>
+        <div class="ops-sub">이 컴퓨터에만 저장된 보고서를 GitHub bank 폴더로 내보내 팀원들과 공유하고, bank에 쌓인 다른 팀원의 보고서를 가져올 수 있습니다.</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-p btn-sm" onclick="exportRpts()">📤 내보내기 (bank 업로드용 파일 생성)</button>
+      <button class="btn-s btn-sm" onclick="importFromBank()">🏦 Bank에서 가져오기</button>
+      <button class="btn-s btn-sm" onclick="importRpts()">📥 로컬 파일에서 가져오기</button>
+    </div>
+    <div id="bank-status" style="font-size:11px;color:var(--txt3);margin-top:8px"></div>
+  </div>
+
   <!-- 아카이브 -->
   <div id="arc-grid" class="arc-grid"></div>
 </div><!-- /.main -->
@@ -818,16 +834,60 @@ function getRpts(){
 function setRpts(arr){try{localStorage.setItem('scm_rpts',JSON.stringify(arr));}catch(e){toast('저장 실패: '+e.message,true);}}
 
 // ════ 보고서 내보내기/가져오기 ════
+const BANK_REPO = 'nanyounglee/scm_vendor_change';
+const BANK_BRANCH = 'main';
+const BANK_PATH = 'bank';
+
 function exportRpts(){
   const rpts=getRpts();
   if(!rpts.length){toast('내보낼 보고서가 없습니다',true);return;}
+  const who=(prompt('내보내기 파일명에 포함할 이름/이니셜을 입력하세요 (bank 폴더 업로드 시 파일명 구분용, 생략 가능)','')||'').trim().replace(/[^\w가-힣-]/g,'');
   const today=new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const fname=who?`SCM_보고서_백업_${who}_${today}.json`:`SCM_보고서_백업_${today}.json`;
   const blob=new Blob([JSON.stringify(rpts,null,2)],{type:'application/json'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`SCM_보고서_백업_${today}.json`;
+  a.download=fname;
   a.click(); URL.revokeObjectURL(a.href);
+  const bankStatus=document.getElementById('bank-status');
+  if(bankStatus) bankStatus.textContent=`💡 내려받은 "${fname}" 파일을 GitHub 저장소의 bank/ 폴더에 업로드(Add file → Upload files)하면 팀원들이 "Bank에서 가져오기"로 볼 수 있습니다.`;
   toast(`✅ ${rpts.length}개 보고서 내보내기 완료`);
+}
+
+async function importFromBank(){
+  const bankStatus=document.getElementById('bank-status');
+  if(bankStatus) bankStatus.textContent='⏳ bank 폴더 목록을 불러오는 중...';
+  try{
+    const listRes=await fetch(`https://api.github.com/repos/${BANK_REPO}/contents/${BANK_PATH}?ref=${BANK_BRANCH}`);
+    if(!listRes.ok) throw new Error(`bank 폴더 조회 실패 (HTTP ${listRes.status})`);
+    const files=(await listRes.json()).filter(f=>f.type==='file'&&f.name.toLowerCase().endsWith('.json'));
+    if(!files.length){
+      if(bankStatus) bankStatus.textContent='ℹ️ bank 폴더에 아직 업로드된 보고서 파일이 없습니다.';
+      toast('bank 폴더에 파일이 없습니다',true);
+      return;
+    }
+    const existing=getRpts();
+    const merged=[...existing];
+    const existIds=new Set(existing.map(r=>r.id));
+    let added=0, failedFiles=[];
+    for(const f of files){
+      try{
+        const fileRes=await fetch(f.download_url);
+        if(!fileRes.ok) throw new Error(`HTTP ${fileRes.status}`);
+        const data=await fileRes.json();
+        if(!Array.isArray(data)) throw new Error('배열 형식이 아님');
+        data.forEach(r=>{ if(r&&r.id&&!existIds.has(r.id)){merged.push(r);existIds.add(r.id);added++;} });
+      }catch(err){ failedFiles.push(f.name); }
+    }
+    setRpts(merged);
+    renderQTabs(); renderArc(null);
+    const failNote=failedFiles.length?` (실패: ${failedFiles.join(', ')})`:'';
+    if(bankStatus) bankStatus.textContent=`✅ bank 파일 ${files.length}개 확인, 신규 보고서 ${added}개 반영 (총 ${merged.length}개)${failNote}`;
+    toast(`✅ Bank에서 ${added}개 신규 보고서 가져오기 완료`);
+  }catch(err){
+    if(bankStatus) bankStatus.textContent=`❌ Bank 가져오기 실패: ${err.message}`;
+    toast('Bank 가져오기 실패: '+err.message,true);
+  }
 }
 function importRpts(){
   const input=document.createElement('input');
