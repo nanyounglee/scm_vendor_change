@@ -424,7 +424,8 @@ header{background:#fff;border-bottom:1px solid var(--bdr);padding:0 28px;display
       </div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn-p btn-sm" onclick="exportRpts()">📤 내보내기 (bank 업로드용 파일 생성)</button>
+      <button class="btn-p btn-sm" onclick="exportRpts()">📤 내보내기 + bank 업로드 페이지 열기</button>
+      <button class="btn-s btn-sm" onclick="openBankUploadPage()">📮 bank 폴더에 업로드하기</button>
       <button class="btn-s btn-sm" onclick="importFromBank()">🏦 Bank에서 가져오기</button>
       <button class="btn-s btn-sm" onclick="importRpts()">📥 로컬 파일에서 가져오기</button>
     </div>
@@ -837,6 +838,11 @@ function setRpts(arr){try{localStorage.setItem('scm_rpts',JSON.stringify(arr));}
 const BANK_REPO = 'nanyounglee/scm_vendor_change';
 const BANK_BRANCH = 'main';
 const BANK_PATH = 'bank';
+const BANK_UPLOAD_URL = `https://github.com/${BANK_REPO}/upload/${BANK_BRANCH}/${BANK_PATH}`;
+
+function openBankUploadPage(){
+  window.open(BANK_UPLOAD_URL, '_blank');
+}
 
 function exportRpts(){
   const rpts=getRpts();
@@ -849,8 +855,9 @@ function exportRpts(){
   a.href=URL.createObjectURL(blob);
   a.download=fname;
   a.click(); URL.revokeObjectURL(a.href);
+  openBankUploadPage();
   const bankStatus=document.getElementById('bank-status');
-  if(bankStatus) bankStatus.textContent=`💡 내려받은 "${fname}" 파일을 GitHub 저장소의 bank/ 폴더에 업로드(Add file → Upload files)하면 팀원들이 "Bank에서 가져오기"로 볼 수 있습니다.`;
+  if(bankStatus) bankStatus.textContent=`💡 "${fname}" 파일이 다운로드되었고, bank 폴더 업로드 페이지를 새 탭으로 열었습니다. 새 탭에서 방금 받은 파일을 드래그해서 올리고 Commit 하세요. (팝업이 차단되었다면 "📮 bank 폴더에 업로드하기" 버튼을 다시 눌러주세요)`;
   toast(`✅ ${rpts.length}개 보고서 내보내기 완료`);
 }
 
