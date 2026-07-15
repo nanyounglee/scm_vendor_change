@@ -87,6 +87,9 @@ header{background:#fff;border-bottom:1px solid var(--bdr);padding:0 28px;display
 .ac-meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
 .ac-foot{margin-top:12px;padding-top:10px;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:7px}
 .ac-date{font-size:11px;color:var(--txt3);margin-left:auto}
+.ac-dates{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr)}
+.ac-dates label{display:flex;flex-direction:column;gap:2px;font-size:10px;color:var(--txt3)}
+.ac-dates input[type=date]{font-size:11px;padding:3px 5px;border:1px solid var(--bdr);border-radius:4px;color:var(--txt2);background:#fff}
 .empty{text-align:center;padding:56px 20px;color:var(--txt3)}
 .empty .ei{font-size:40px;margin-bottom:12px;opacity:.35}
 #fp{background:#fff;border:1px solid var(--bdr);border-radius:var(--r);padding:28px;display:none;margin-bottom:22px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -245,7 +248,7 @@ header{background:#fff;border-bottom:1px solid var(--bdr);padding:0 28px;display
     <!-- ③ ASIS 정보 -->
     <div class="sec-h">③ ASIS (현재 협력사)</div>
     <div class="g4" style="margin-bottom:12px">
-      <div><label class="lbl">현재 협력사명</label><input type="text" id="asup" readonly></div>
+      <div><label class="lbl">현재 협력사명 <span style="font-weight:400;color:var(--txt3)">(자동입력, 수정 가능)</span></label><input type="text" id="asup"></div>
       <div><label class="lbl">소재</label><input type="text" id="amat" readonly></div>
       <div><label class="lbl">임가공 여부</label><input type="text" id="aproc" readonly></div>
       <div><label class="lbl">MOQ</label><input type="text" id="amoq" readonly></div>
@@ -752,6 +755,12 @@ function loadIssues(row){
 }
 
 // ════ 판매량 ════
+function get26MonthsCovered(){
+  const s=DB.sales&&DB.sales[0];
+  if(!s) return ['1'];
+  const months=Object.keys(s).filter(k=>/^26-\d+$/.test(k)).map(k=>parseInt(k.split('-')[1],10)).sort((a,b)=>a-b);
+  return (months.length?months:[1]).map(String);
+}
 function loadSales(goods){
   const prods=DB.sales.filter(s=>{
     const gt=(s['굿즈 연결 현황(text)']||'').toLowerCase();
@@ -760,11 +769,13 @@ function loadSales(goods){
   const sec=document.getElementById('sal-sec');
   if(!prods.length){sec.style.display='none';return;}
   sec.style.display='block';
-  const yAgg=(yr)=>MONTHS.map(m=>prods.reduce((a,s)=>a+(s[yr+'-'+m]||0),0));
-  const d25=yAgg('25'), d26=yAgg('26');
+  const monthsToShow=get26MonthsCovered(); // 예: ['1','2','3','4','5','6','7']
+  const maxM26=Math.max(...monthsToShow.map(Number));
+  const val=(yr,m)=>prods.reduce((a,s)=>a+(s[yr+'-'+m]||0),0);
+  const d25=monthsToShow.map(m=>val('25',m)), d26=monthsToShow.map(m=>val('26',m));
   const tot25=d25.reduce((a,b)=>a+b,0), tot26=d26.reduce((a,b)=>a+b,0);
   const maxVal=Math.max(...d25,...d26,1);
-  const barsHtml=MONTHS.map((m,i)=>{
+  const barsHtml=monthsToShow.map((m,i)=>{
     const w25=Math.round(d25[i]/maxVal*120),w26=Math.round(d26[i]/maxVal*120);
     return `<div class="sal-bar-row"><span class="sal-bar-label">${m}월</span>
       <div class="sal-bar y25" style="width:${w25}px"></div><span class="sal-val">${(d25[i]||0).toLocaleString()}</span>
@@ -772,13 +783,17 @@ function loadSales(goods){
     </div>`;
   }).join('');
   document.getElementById('sal-bars').innerHTML='<div class="sal-bar-wrap">'+barsHtml+'</div>';
+  const monthRowsHtml=monthsToShow.map((m,i)=>{
+    const yoy=d25[i]>0?((d26[i]-d25[i])/d25[i]*100).toFixed(1):'-';
+    return `<tr><td>${m}월</td><td>${(d25[i]||0).toLocaleString()} EA</td><td>${(d26[i]||0).toLocaleString()} EA</td><td>${yoy!=='-'?(parseFloat(yoy)>0?'▲':'▼')+Math.abs(yoy)+'%':'—'}</td></tr>`;
+  }).join('');
   const yoyPct=tot25>0?((tot26-tot25)/tot25*100).toFixed(1):'-';
-  const tblHtml=`<table class="cmp-tbl"><thead><tr><th>연도</th><th>총 판매</th><th>YoY</th></tr></thead><tbody>
-    <tr><td>2025</td><td>${tot25.toLocaleString()} EA</td><td>—</td></tr>
-    <tr><td>2026 (1~4월)</td><td>${tot26.toLocaleString()} EA</td><td>${yoyPct!=='-'?(parseFloat(yoyPct)>0?'▲':'▼')+Math.abs(yoyPct)+'%':'—'}</td></tr>
+  const tblHtml=`<table class="cmp-tbl"><thead><tr><th>월</th><th>2025</th><th>2026</th><th>YoY</th></tr></thead><tbody>
+    ${monthRowsHtml}
+    <tr style="font-weight:700"><td>합계 (1~${maxM26}월)</td><td>${tot25.toLocaleString()} EA</td><td>${tot26.toLocaleString()} EA</td><td>${yoyPct!=='-'?(parseFloat(yoyPct)>0?'▲':'▼')+Math.abs(yoyPct)+'%':'—'}</td></tr>
   </tbody></table>`;
   document.getElementById('sal-tbl-wrap').innerHTML=tblHtml;
-  document.getElementById('sal-note').textContent=`● 2025 (파란): ${tot25.toLocaleString()} EA  ● 2026 1~4월 (남색): ${tot26.toLocaleString()} EA  · Product Parts 기준`;
+  document.getElementById('sal-note').textContent=`● 2025 1~${maxM26}월 (파란): ${tot25.toLocaleString()} EA  ● 2026 1~${maxM26}월 (남색): ${tot26.toLocaleString()} EA  · Product Parts 기준`;
 }
 
 // ════ 분기 탭 ════
@@ -946,7 +961,11 @@ function renderArc(q){
         <button class="btn-s btn-sm" onclick="loadRptToForm('${r.id}')">불러오기</button>
         <select class="status-select" onchange="updateRptStatus('${r.id}',this.value)" aria-label="검토 현황 변경">${statusOptions}</select>
         <button class="btn-r btn-sm" onclick="delRpt('${r.id}')">삭제</button>
-        <span class="ac-date">${r.date}</span>
+      </div>
+      <div class="ac-dates" onclick="event.stopPropagation()">
+        <label>작성일<input type="date" value="${r.date||''}" onchange="updateRptDate('${r.id}','date',this.value)"></label>
+        <label>확정일<input type="date" value="${r.confirmedDate||''}" onchange="updateRptDate('${r.id}','confirmedDate',this.value)"></label>
+        <label>완료일<input type="date" value="${r.completedDate||''}" onchange="updateRptDate('${r.id}','completedDate',this.value)"></label>
       </div>
     </div>`;
   }).join('');
@@ -973,6 +992,17 @@ function updateRptStatus(id,status){
   toast(`현황이 '${status}'(으)로 변경되었습니다`);
 }
 
+function updateRptDate(id,field,value){
+  if(!['date','confirmedDate','completedDate'].includes(field)) return;
+  const all=getRpts();
+  const r=all.find(x=>x.id===id);
+  if(!r) return;
+  if(value) r[field]=value; else delete r[field];
+  setRpts(all);
+  renderStatusSummary(); renderCompletedMonthly();
+  toast('일자가 수정되었습니다');
+}
+
 function renderStatusSummary(){
   const el=document.getElementById('status-summary');
   if(!el) return;
@@ -995,12 +1025,13 @@ function renderCompletedMonthly(){
     el.innerHTML='<div class="empty" style="padding:24px 12px">완료 처리된 변경 검토가 없습니다.</div>';
     return;
   }
-  el.innerHTML=`<table class="monthly-tbl"><thead><tr><th>완료월</th><th>제품</th><th>변경 전 협력사</th><th>변경 후 협력사</th><th>완료일</th></tr></thead><tbody>
+  el.innerHTML=`<table class="monthly-tbl"><thead><tr><th>완료월</th><th>제품</th><th>변경 전 협력사</th><th>변경 후 협력사</th><th>변경확정일</th><th>변경완료일</th></tr></thead><tbody>
     ${rows.map(r=>`<tr>
       <td><span class="month-chip">${esc(r.month)}</span></td>
       <td>${esc(r.goods)}</td>
       <td>${esc(r.asSup||'—')}</td>
       <td>${esc(r.tbSup||'—')}</td>
+      <td>${esc(r.confirmedDate||'—')}</td>
       <td>${esc(r.completedDate||r.date||'—')}</td>
     </tr>`).join('')}
   </tbody></table>`;
