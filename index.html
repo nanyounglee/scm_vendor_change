@@ -179,9 +179,9 @@ header{background:#fff;border-bottom:1px solid var(--bdr);padding:0 28px;display
   <div class="modal-box">
     <h3>🔄 데이터 갱신 안내</h3>
     <div class="modal-info">
-      <b>마지막 갱신:</b> 2026-07-15T00:00:00+09:00<br>
-      <b>다음 자동 갱신:</b> 2026-07-20 08:00 KST<br>
-      <b>데이터 범위:</b> parts 4,698건 · LT 커버 1,566건<br><br>
+      <b>마지막 갱신:</b> <span id="last-refresh-info"></span><br>
+      <b>다음 자동 갱신:</b> <span id="next-refresh-info"></span><br>
+      <b>데이터 범위:</b> <span id="data-range-info"></span><br><br>
       <b>수동으로 지금 갱신하려면:</b><br>
       Claude Cowork 에서 아래 메시지를 보내주세요:<br>
       <code style="background:#eee;padding:2px 6px;border-radius:3px;font-size:11px;display:block;margin-top:6px">"Airtable 최신 데이터로 대시보드 갱신해줘"</code>
@@ -452,6 +452,7 @@ const MONTHS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 const R_SUB  = {품질:'qua',원가:'cost',납기:'del',케파:'cap',폐업:'cls',기타:'etc'};
 const QL = ['1ea','50ea','100ea','300ea','500ea','1,000ea','3,000ea'];
 const WORKFLOW_STATUSES = ['전환 검토중','확정','완료'];
+const DATA_UPDATED_AT = '2026-07-15T00:00:00+09:00';
 
 let priceChartInst = null;
 let curVerdict = '';
@@ -1109,15 +1110,42 @@ function dlPdfNow(){
   setTimeout(()=>pw.print(),600);
 }
 
+// ════ 데이터 갱신 정보 표시 ════
+function nextMondayKST(fromIso){
+  const d = new Date(fromIso);
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const daysAhead = ((1 - day) + 7) % 7 || 7;
+  d.setDate(d.getDate() + daysAhead);
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${dd} 08:00 KST`;
+}
+function updateDataBadges(){
+  const dateOnly = DATA_UPDATED_AT.slice(0,10);
+  const partsCount = DB.parts.length;
+  const issuesCount = DB.issues.length;
+  const ltCoverCount = DB.parts.filter(p=>p['파츠 총 제작 리드타임_기본_500개']).length;
+
+  const dateBadge = document.getElementById('data-date-badge');
+  if(dateBadge) dateBadge.textContent = `데이터: ${dateOnly}`;
+
+  const badge = document.getElementById('db-status');
+  if(badge){
+    badge.textContent = `DB ${partsCount.toLocaleString()}파츠 · 이슈 ${issuesCount.toLocaleString()}건`;
+    if(DB.parts.some(p=>!p['파츠 총 제작 리드타임_기본_500개'])) badge.classList.add('warn');
+  }
+
+  const lastRefresh = document.getElementById('last-refresh-info');
+  if(lastRefresh) lastRefresh.textContent = DATA_UPDATED_AT;
+  const nextRefresh = document.getElementById('next-refresh-info');
+  if(nextRefresh) nextRefresh.textContent = nextMondayKST(DATA_UPDATED_AT);
+  const dataRange = document.getElementById('data-range-info');
+  if(dataRange) dataRange.textContent = `parts ${partsCount.toLocaleString()}건 · LT 커버 ${ltCoverCount.toLocaleString()}건`;
+}
+
 // ════ 부트 ════
 window.addEventListener('DOMContentLoaded',()=>{
   initGoods();
-  // DB 상태 배지 업데이트
-  const badge=document.getElementById('db-status');
-  if(badge){
-    const hasMissingLT=DB.parts.some(p=>!p['파츠 총 제작 리드타임_기본_500개']);
-    if(hasMissingLT) badge.classList.add('warn');
-  }
+  updateDataBadges();
 });
 
 </script>
